@@ -1,0 +1,41 @@
+{
+  "SFTP": [
+    {
+      "PutRequest": {
+        "Item": {
+            "SK": {
+              "S": "USER#test"
+            },
+            "S3Path": {
+              "S": "/sftp-test-04122023/test"
+            },
+            "PK": {
+              "S": "SFTP"
+            },
+            "SSHPublicKey": {
+              "S": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC5JQninQTRdlZA8UaHy1YZPk1+ao63zy9ac9fYJIBnOtW0K+apcpgswp/S19puGbzjL++9ma+AB/V/xFiYJ6EWChRiRBcGhUZd8/MFjwESJaF17h+SIAUK3monsyCEFtJl/6GZtadb7MHsqtjDp5YcYAHU4qROoKDeJm74vp/T1ow63d/nGAUw+PbFstIJI1udwDAIP/jzdSUxFwQ/UNz+f8GVpyykk6g/kKQ9NMTfeGSYNrpNkUQcRc+GMmUWEy0Rgblok0u/RZis2MFsVCgLK7cCSajWaY7LikTYOTX7EgUzpppYAFSReFThVL69uKMD/O8t/mgIyUp6tJ3ZOub7kMa+dEUHx02Di7kisnvCJqEUxIrkhkFTfXb7QNJcOIMcZdwUu7NgTJNvZYPDlNRImn0Z2AnNJ9ALEGG2UMbRashuA7Rac/TfrvYPy6JJIpWW92UyKiEHOX2D9zVuwyJerV09pI4NSKPDS/ntiQakcPsuOt/CZcz6WDR17F+sznaGB7PMoXNw1zPkll06Hr1EQeI7FvrT6aonduSkTrL5MnmRjgCJOCiKa6U7eHclYf0tH+eTjT1jhSQiTV/W1235xqr+ZJCoaVq1wAk5fjIL/skJNwHCVw64/i4FLHVvDt15Q5Rc8OpkrGsGU3qZyQluBMdK6SjIT8YQUh2zCrSSYw== rakeshsanghvi@rsanghvi.lan"
+            }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+            "SK": {
+              "S": "USER#test1"
+            },
+            "S3Path": {
+              "S": "/sftp-test-04122023/test1"
+            },
+            "PK": {
+              "S": "SFTP"
+            },
+            "SSHPublicKey": {
+              "S": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC5JQninQTRdlZA8UaHy1YZPk1+ao63zy9ac9fYJIBnOtW0K+apcpgswp/S19puGbzjL++9ma+AB/V/xFiYJ6EWChRiRBcGhUZd8/MFjwESJaF17h+SIAUK3monsyCEFtJl/6GZtadb7MHsqtjDp5YcYAHU4qROoKDeJm74vp/T1ow63d/nGAUw+PbFstIJI1udwDAIP/jzdSUxFwQ/UNz+f8GVpyykk6g/kKQ9NMTfeGSYNrpNkUQcRc+GMmUWEy0Rgblok0u/RZis2MFsVCgLK7cCSajWaY7LikTYOTX7EgUzpppYAFSReFThVL69uKMD/O8t/mgIyUp6tJ3ZOub7kMa+dEUHx02Di7kisnvCJqEUxIrkhkFTfXb7QNJcOIMcZdwUu7NgTJNvZYPDlNRImn0Z2AnNJ9ALEGG2UMbRashuA7Rac/TfrvYPy6JJIpWW92UyKiEHOX2D9zVuwyJerV09pI4NSKPDS/ntiQakcPsuOt/CZcz6WDR17F+sznaGB7PMoXNw1zPkll06Hr1EQeI7FvrT6aonduSkTrL5MnmRjgCJOCiKa6U7eHclYf0tH+eTjT1jhSQiTV/W1235xqr+ZJCoaVq1wAk5fjIL/skJNwHCVw64/i4FLHVvDt15Q5Rc8OpkrGsGU3qZyQluBMdK6SjIT8YQUh2zCrSSYw== rakeshsanghvi@rsanghvi.lan"
+            }
+        }
+      }
+    }
+
+  ]
+}

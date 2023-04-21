@@ -1,0 +1,275 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: 
+  create/delete SFTP step function
+
+Resources:
+##########################################################################
+#  Dynamo DB tables                                                      #
+##########################################################################
+
+# Create table with KMS key. Avoid any charges, I haven't included here
+  SFTPTable:
+    Type: "AWS::DynamoDB::Table"
+    DeletionPolicy: Delete
+    Properties:
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      TableName: SFTP
+
+  ##########################################################################
+  #  Create S3 Bucket for SFTP Server                                      #
+  ##########################################################################
+
+  # Define the SQS queue
+  SFTPBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: "sftp-test-04122023"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  ##########################################################################
+  #  IAM Roles and Permission                                              #
+  ##########################################################################
+
+  StateExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - !Sub states.${AWS::Region}.amazonaws.com
+                - !Sub transfer.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: WriteCloudWatchLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 'logs:CreateLogDelivery'
+                  - 'logs:GetLogDelivery'
+                  - 'logs:UpdateLogDelivery'
+                  - 'logs:DeleteLogDelivery'
+                  - 'logs:ListLogDeliveries'
+                  - 'logs:PutResourcePolicy'
+                  - 'logs:DescribeResourcePolicies'
+                  - 'logs:DescribeLogGroups'
+                Resource: '*'
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:UpdateItem'
+                  - 'dynamodb:DeleteItem'
+                  - 'dynamodb:Query'
+                Resource: !GetAtt SFTPTable.Arn
+        - PolicyName: S3Policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - s3:Get*
+                  - s3:Put*
+                  - s3:List*
+                  - s3:Delete*
+                Resource:
+                  - !Join [ "",[ "arn:aws:s3:::",!Ref 'SFTPBucket',"/*" ] ]
+                  - !Join [ "",[ "arn:aws:s3:::",!Ref 'SFTPBucket' ] ]
+        - PolicyName: TransferServerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - iam:PassRole
+                  - transfer:*
+                Resource: '*'
+
+  SFTPBaseRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - !Sub transfer.amazonaws.com
+            Action:
+              - 'sts:AssumeRole' 
+      Policies:
+        - PolicyName: S3Policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - s3:Get*
+                  - s3:Put*
+                  - s3:List*
+                  - s3:Delete*
+                Resource:
+                  - !Join [ "",[ "arn:aws:s3:::",!Ref 'SFTPBucket',"/*" ] ]
+                  - !Join [ "",[ "arn:aws:s3:::",!Ref 'SFTPBucket' ] ]
+        - PolicyName: WriteCloudWatchLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 'logs:CreateLogDelivery'
+                  - 'logs:GetLogDelivery'
+                  - 'logs:UpdateLogDelivery'
+                  - 'logs:DeleteLogDelivery'
+                  - 'logs:ListLogDeliveries'
+                  - 'logs:PutResourcePolicy'
+                  - 'logs:DescribeResourcePolicies'
+                  - 'logs:DescribeLogGroups'
+                Resource: '*'
+  
+  ##########################################################################
+  #  State Machine                                                         #
+  ##########################################################################
+
+  SFTPServerStateMachineLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub  /aws/vendedlogs/states/${AWS::StackName}
+      RetentionInDays: 1
+
+  CreateSFTPServerStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: create-sftp-server-state-machine
+      DefinitionUri: ../statemachine/create-sftp-server.json
+      DefinitionSubstitutions:
+        SFTPBaseRole: !GetAtt SFTPBaseRole.Arn
+        SFTPTable: !Ref SFTPTable
+      Role: !GetAtt StateExecutionRole.Arn
+      Logging:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt SFTPServerStateMachineLogGroup.Arn
+        IncludeExecutionData: True
+        Level: ALL
+
+  DeleteSFTPServerStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: delete-sftp-server-state-machine
+      DefinitionUri: ../statemachine/delete-sftp-server.json
+      DefinitionSubstitutions:
+        SFTPBaseRole: !GetAtt SFTPBaseRole.Arn
+        SFTPTable: !Ref SFTPTable
+      Role: !GetAtt StateExecutionRole.Arn
+      Logging:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt SFTPServerStateMachineLogGroup.Arn
+        IncludeExecutionData: True
+        Level: ALL
+
+  ##########################################################################
+  #  EventBridge Schedules                                                 #
+  ##########################################################################
+
+  SFTPScheduleRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - scheduler.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeStateMachine
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'states:startExecution'
+                Resource:
+                  - !GetAtt CreateSFTPServerStateMachine.Arn
+                  - !GetAtt DeleteSFTPServerStateMachine.Arn
+
+  DeleteSFTPSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: "create-sftp-scheduler"
+      Description: Schedule the runs every day 08:00 PM CST
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      ScheduleExpression: 'cron(0 20 ? * * *)'
+      ScheduleExpressionTimezone: "America/Chicago"
+      Target:
+        Arn: !GetAtt DeleteSFTPServerStateMachine.Arn
+        RoleArn: !GetAtt SFTPScheduleRole.Arn
+
+  CreateSFTPSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: "delete-sftp-scheduler"
+      Description: Schedule the runs every day 08:00 AM CST
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      ScheduleExpression: 'cron(0 8 ? * * *)'
+      ScheduleExpressionTimezone: "America/Chicago"
+      Target:
+        Arn: !GetAtt CreateSFTPServerStateMachine.Arn
+        RoleArn: !GetAtt SFTPScheduleRole.Arn                
+
+##########################################################################
+#  Outputs                                                               #
+##########################################################################
+Outputs:
+  CreateStateMachineArn:
+    Export:
+      Name: CreateSFTPStateMachineArn
+      Description: CreateSFTPStateMachineArn
+    Value:
+      'Fn::GetAtt':
+        - CreateSFTPServerStateMachine
+        - Arn
+  DeleteStateMachineArn:
+    Export:
+      Name: DeleteSFTPServerStateMachine
+      Description: DeleteSFTPStateMachineArn
+    Value:
+      'Fn::GetAtt':
+        - DeleteSFTPServerStateMachine
+        - Arn        

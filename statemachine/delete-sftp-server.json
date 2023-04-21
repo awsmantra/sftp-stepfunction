@@ -1,0 +1,31 @@
+{
+    "Comment": "A description of my state machine",
+    "StartAt": "Get SFTP ServerId",
+    "States": {
+      "Get SFTP ServerId": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::dynamodb:getItem",
+        "Parameters": {
+          "TableName": "${SFTPTable}",
+          "Key": {
+            "PK": {
+              "S": "SFTP"
+            },
+            "SK": {
+              "S": "ServerId"
+            }
+          }
+        },
+        "Next": "DeleteServer",
+        "OutputPath": "$.Item"
+      },
+      "DeleteServer": {
+        "Type": "Task",
+        "End": true,
+        "Parameters": {
+          "ServerId.$": "$.ServerId.S"
+        },
+        "Resource": "arn:aws:states:::aws-sdk:transfer:deleteServer"
+      }
+    }
+  }

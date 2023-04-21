@@ -1,0 +1,91 @@
+{
+  "Comment": "A description of my state machine",
+  "StartAt": "CreateServer",
+  "States": {
+    "CreateServer": {
+      "Type": "Task",
+      "Next": "Save ServerId",
+      "Parameters": {
+        "Domain": "S3",
+        "EndpointType": "PUBLIC",
+        "IdentityProviderType": "SERVICE_MANAGED",
+        "LoggingRole": "${SFTPBaseRole}",
+        "Protocols": [
+          "SFTP"
+        ],
+        "SecurityPolicyName": "TransferSecurityPolicy-2018-11"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:transfer:createServer"
+    },
+    "Save ServerId": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:putItem",
+      "Parameters": {
+        "TableName": "${SFTPTable}",
+        "Item": {
+          "PK": {
+            "S": "SFTP"
+          },
+          "SK": {
+            "S": "ServerId"
+          },
+          "ServerId": {
+            "S.$": "$.ServerId"
+          }
+        }
+      },
+      "Next": "Get SFTP User",
+      "ResultPath": null
+    },
+    "Get SFTP User": {
+      "Type": "Task",
+      "Parameters": {
+        "TableName": "${SFTPTable}",
+        "KeyConditionExpression": "PK = :v1 AND begins_with(SK,:v2)",
+        "ExpressionAttributeValues": {
+          ":v1": {
+            "S": "SFTP"
+          },
+          ":v2": {
+            "S": "USER"
+          }
+        }
+      },
+      "Resource": "arn:aws:states:::aws-sdk:dynamodb:query",
+      "Next": "Iterate User",
+      "ResultPath": "$.context"
+    },
+    "Iterate User": {
+      "Type": "Map",
+      "ItemProcessor": {
+        "ProcessorConfig": {
+          "Mode": "INLINE"
+        },
+        "StartAt": "Create SFTP User",
+        "States": {
+          "Create SFTP User": {
+            "Type": "Task",
+            "End": true,
+            "Parameters": {
+              "ServerId.$": "$.ItemSelector.ServerId",
+              "HomeDirectory.$": "$.ItemSelector.Value.S3Path.S",
+              "HomeDirectoryType": "PATH",
+              "Role": "${SFTPBaseRole}",
+              "SshPublicKeyBody.$": "$.ItemSelector.Value.SSHPublicKey.S",
+              "UserName.$": "States.ArrayGetItem(States.StringSplit($.ItemSelector.Value.SK.S, '#'), 1)"
+            },
+            "Resource": "arn:aws:states:::aws-sdk:transfer:createUser"
+          }
+        }
+      },
+      "End": true,
+      "ItemsPath": "$.context.Items",
+      "ItemSelector": {
+        "ItemSelector": {
+          "ServerId.$": "$.ServerId",
+          "Value.$": "$$.Map.Item.Value"
+        }
+      }
+    }
+  }
+}
